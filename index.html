@@ -43,11 +43,28 @@
           <div class="segmented" role="group" aria-label="选择对战模式">
             <button id="pvpMode" class="active" type="button" aria-pressed="true">双人</button>
             <button id="aiMode" type="button" aria-pressed="false">AI</button>
+            <button id="onlineMode" type="button" aria-pressed="false">联机</button>
           </div>
           <label class="sound-toggle">
             <input id="soundToggle" type="checkbox" checked />
             <span>音效</span>
           </label>
+        </div>
+
+        <div id="onlineCard" class="online-card" hidden>
+          <div>
+            <p class="label">房间</p>
+            <strong id="roomCode">未连接</strong>
+          </div>
+          <div>
+            <p class="label">你的身份</p>
+            <strong id="playerRole">连接中</strong>
+          </div>
+          <p id="connectionText" class="connection-text">正在连接房间...</p>
+          <div class="share-row">
+            <input id="shareLink" type="text" readonly aria-label="邀请链接" />
+            <button id="copyLink" type="button">复制</button>
+          </div>
         </div>
 
         <div class="controls" aria-label="游戏操作">
