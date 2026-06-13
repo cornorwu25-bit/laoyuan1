@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>五子棋</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="board-area" aria-label="五子棋棋盘">
+        <canvas id="board" width="780" height="780"></canvas>
+      </section>
+
+      <aside class="panel" aria-label="游戏信息">
+        <div class="brand">
+          <p>Gomoku</p>
+          <h1>五子棋</h1>
+        </div>
+
+        <div class="status-card">
+          <div class="turn-row">
+            <span id="turnStone" class="stone black" aria-hidden="true"></span>
+            <div>
+              <p class="label">当前回合</p>
+              <strong id="statusText">黑棋先手</strong>
+            </div>
+          </div>
+          <div class="meta-grid">
+            <div>
+              <p class="label">步数</p>
+              <strong id="moveCount">0</strong>
+            </div>
+            <div>
+              <p class="label">用时</p>
+              <strong id="timer">00:00</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="mode-card" aria-label="模式设置">
+          <p class="label">对战模式</p>
+          <div class="segmented" role="group" aria-label="选择对战模式">
+            <button id="pvpMode" class="active" type="button" aria-pressed="true">双人</button>
+            <button id="aiMode" type="button" aria-pressed="false">AI</button>
+          </div>
+          <label class="sound-toggle">
+            <input id="soundToggle" type="checkbox" checked />
+            <span>音效</span>
+          </label>
+        </div>
+
+        <div class="controls" aria-label="游戏操作">
+          <button id="newGame" type="button">新局</button>
+          <button id="undo" type="button">悔棋</button>
+        </div>
+
+        <div class="rules">
+          <h2>对局记录</h2>
+          <ol id="history" aria-label="落子记录"></ol>
+        </div>
+      </aside>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
