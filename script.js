@@ -9,7 +9,14 @@ const newGameButton = document.querySelector("#newGame");
 const undoButton = document.querySelector("#undo");
 const pvpModeButton = document.querySelector("#pvpMode");
 const aiModeButton = document.querySelector("#aiMode");
+const onlineModeButton = document.querySelector("#onlineMode");
 const soundToggle = document.querySelector("#soundToggle");
+const onlineCard = document.querySelector("#onlineCard");
+const roomCodeText = document.querySelector("#roomCode");
+const playerRoleText = document.querySelector("#playerRole");
+const connectionText = document.querySelector("#connectionText");
+const shareLinkInput = document.querySelector("#shareLink");
+const copyLinkButton = document.querySelector("#copyLink");
 
 const size = 15;
 const cell = canvas.width / (size + 1);
@@ -17,8 +24,12 @@ const margin = cell;
 const winLength = 5;
 const humanPlayer = 1;
 const aiPlayer = 2;
+const playerLabels = {
+  1: "黑棋",
+  2: "白棋",
+};
 
-let board = [];
+let board = emptyBoard();
 let current = 1;
 let moves = [];
 let winner = 0;
@@ -28,19 +39,46 @@ let lastPointer = null;
 let gameMode = "pvp";
 let isAiThinking = false;
 let audioContext = null;
+let clientId = getClientId();
+let online = {
+  room: null,
+  color: null,
+  connected: false,
+  eventSource: null,
+  players: {},
+  error: "",
+};
+
+function emptyBoard() {
+  return Array.from({ length: size }, () => Array(size).fill(0));
+}
+
+function getClientId() {
+  const key = "gomokuClientId";
+  let value = localStorage.getItem(key);
+  if (!value) {
+    value = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    localStorage.setItem(key, value);
+  }
+  return value;
+}
 
 function resetGame() {
-  board = Array.from({ length: size }, () => Array(size).fill(0));
+  board = emptyBoard();
   current = 1;
   moves = [];
   winner = 0;
   isAiThinking = false;
   startedAt = Date.now();
+  restartTimer();
+  render();
+  updateUi();
+}
+
+function restartTimer() {
   clearInterval(timerId);
   timerId = setInterval(updateTimer, 1000);
   updateTimer();
-  render();
-  updateUi();
 }
 
 function render() {
@@ -146,7 +184,7 @@ function drawStone(col, row, player) {
 }
 
 function drawHoverHint() {
-  if (winner || !lastPointer || isAiTurn()) {
+  if (winner || !lastPointer || isAiTurn() || !canCurrentClientMove()) {
     return;
   }
 
@@ -179,7 +217,7 @@ canvas.addEventListener("pointerleave", () => {
   render();
 });
 
-canvas.addEventListener("click", (event) => {
+canvas.addEventListener("click", async (event) => {
   if (winner || isAiThinking || isAiTurn()) {
     return;
   }
@@ -187,6 +225,15 @@ canvas.addEventListener("click", (event) => {
   const point = pointFromEvent(event);
   if (!point || board[point.row][point.col]) {
     playSound("error");
+    return;
+  }
+
+  if (gameMode === "online") {
+    if (!canCurrentClientMove()) {
+      playSound("error");
+      return;
+    }
+    await sendOnlineAction("move", point);
     return;
   }
 
@@ -214,7 +261,16 @@ function pointFromEvent(event) {
 function placeStone(row, col, options = {}) {
   board[row][col] = current;
   moves.push({ row, col, player: current });
+  finishMove(row, col);
+  render();
+  updateUi();
 
+  if (options.source === "human") {
+    queueAiMove();
+  }
+}
+
+function finishMove(row, col) {
   if (hasWon(row, col, current)) {
     winner = current;
     clearInterval(timerId);
@@ -226,13 +282,6 @@ function placeStone(row, col, options = {}) {
   } else {
     playSound(current === 1 ? "black" : "white");
     current = current === 1 ? 2 : 1;
-  }
-
-  render();
-  updateUi();
-
-  if (options.source === "human") {
-    queueAiMove();
   }
 }
 
@@ -303,7 +352,7 @@ function findBestAiMove() {
     const attack = scoreMove(row, col, aiPlayer);
     const defense = scoreMove(row, col, humanPlayer);
     const centerBias = 16 - Math.abs(row - 7) - Math.abs(col - 7);
-    const score = attack * 1.12 + defense * 1.0 + centerBias;
+    const score = attack * 1.12 + defense + centerBias;
 
     if (!best || score > best.score) {
       best = { row, col, score };
@@ -376,23 +425,21 @@ function patternScore(length, openEnds) {
 }
 
 function updateUi() {
-  const labels = {
-    1: "黑棋",
-    2: "白棋",
-  };
-
   moveCount.textContent = moves.length;
-  undoButton.disabled = moves.length === 0 || isAiThinking;
+  undoButton.disabled = moves.length === 0 || isAiThinking || (gameMode === "online" && !online.color);
   pvpModeButton.classList.toggle("active", gameMode === "pvp");
   aiModeButton.classList.toggle("active", gameMode === "ai");
+  onlineModeButton.classList.toggle("active", gameMode === "online");
   pvpModeButton.setAttribute("aria-pressed", String(gameMode === "pvp"));
   aiModeButton.setAttribute("aria-pressed", String(gameMode === "ai"));
+  onlineModeButton.setAttribute("aria-pressed", String(gameMode === "online"));
+  onlineCard.hidden = gameMode !== "online";
   turnStone.className = `stone ${current === 1 ? "black" : "white"}`;
 
   if (winner === 3) {
     statusText.textContent = "平局";
   } else if (winner) {
-    statusText.textContent = `${labels[winner]}获胜`;
+    statusText.textContent = `${playerLabels[winner]}获胜`;
     turnStone.className = `stone ${winner === 1 ? "black" : "white"}`;
   } else if (isAiThinking) {
     statusText.textContent = "AI 思考中";
@@ -400,16 +447,48 @@ function updateUi() {
     statusText.textContent = "你执黑棋";
   } else if (gameMode === "ai" && current === aiPlayer) {
     statusText.textContent = "AI 执白棋";
+  } else if (gameMode === "online" && !online.connected) {
+    statusText.textContent = "等待连接";
+  } else if (gameMode === "online" && online.color === current) {
+    statusText.textContent = `轮到你落子`;
+  } else if (gameMode === "online" && online.color) {
+    statusText.textContent = `等待${playerLabels[current]}`;
   } else {
-    statusText.textContent = `${labels[current]}落子`;
+    statusText.textContent = `${playerLabels[current]}落子`;
   }
 
+  updateOnlineUi();
+  renderHistory();
+}
+
+function updateOnlineUi() {
+  if (gameMode !== "online") {
+    return;
+  }
+
+  roomCodeText.textContent = online.room || "未连接";
+  playerRoleText.textContent = online.color ? playerLabels[online.color] : "观战";
+  shareLinkInput.value = online.room ? roomUrl(online.room) : "";
+
+  const playerCount = Object.values(online.players || {}).filter(Boolean).length;
+  if (online.error) {
+    connectionText.textContent = online.error;
+  } else if (!online.connected) {
+    connectionText.textContent = "正在连接房间...";
+  } else if (playerCount < 2) {
+    connectionText.textContent = "已连接，等待朋友加入。";
+  } else {
+    connectionText.textContent = "两位玩家已就位，可以开始对局。";
+  }
+}
+
+function renderHistory() {
   historyList.innerHTML = "";
   moves.slice(-80).forEach((move, index) => {
     const item = document.createElement("li");
     const moveNumber = moves.length > 80 ? moves.length - 80 + index + 1 : index + 1;
     const colName = String.fromCharCode(65 + move.col);
-    item.textContent = `${moveNumber}. ${labels[move.player]} ${colName}${move.row + 1}`;
+    item.textContent = `${moveNumber}. ${playerLabels[move.player]} ${colName}${move.row + 1}`;
     if (index === Math.min(moves.length, 80) - 1) {
       item.className = "latest";
     }
@@ -430,13 +509,23 @@ function setMode(mode) {
     return;
   }
 
+  closeOnline();
   gameMode = mode;
   playSound("switch");
-  resetGame();
+  if (mode === "online") {
+    startOnline();
+  } else {
+    resetGame();
+  }
 }
 
-function undoMove() {
+async function undoMove() {
   if (!moves.length || isAiThinking) {
+    return;
+  }
+
+  if (gameMode === "online") {
+    await sendOnlineAction("undo");
     return;
   }
 
@@ -448,11 +537,157 @@ function undoMove() {
   }
 
   winner = 0;
-  clearInterval(timerId);
-  timerId = setInterval(updateTimer, 1000);
+  restartTimer();
   playSound("undo");
   render();
   updateUi();
+}
+
+async function newGame() {
+  playSound("switch");
+  if (gameMode === "online") {
+    await sendOnlineAction("reset");
+    return;
+  }
+  resetGame();
+}
+
+function canCurrentClientMove() {
+  return gameMode !== "online" || (online.connected && online.color === current);
+}
+
+function startOnline() {
+  const params = new URLSearchParams(location.search);
+  const room = params.get("room") || makeRoomCode();
+  online = {
+    room,
+    color: null,
+    connected: false,
+    eventSource: null,
+    players: {},
+    error: "",
+  };
+
+  history.replaceState(null, "", roomUrl(room, true));
+  resetGame();
+  joinRoom(room);
+}
+
+async function joinRoom(room) {
+  try {
+    const response = await fetch("/api/rooms/join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ room, clientId }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "无法加入房间");
+    }
+
+    online.color = data.color;
+    applyOnlineState(data.state);
+    connectEvents(room);
+  } catch (error) {
+    online.error = error.message;
+    updateUi();
+  }
+}
+
+function connectEvents(room) {
+  if (online.eventSource) {
+    online.eventSource.close();
+  }
+
+  const events = new EventSource(`/events?room=${encodeURIComponent(room)}&client=${encodeURIComponent(clientId)}`);
+  online.eventSource = events;
+
+  events.addEventListener("open", () => {
+    online.connected = true;
+    online.error = "";
+    updateUi();
+  });
+
+  events.addEventListener("state", (event) => {
+    online.connected = true;
+    online.error = "";
+    applyOnlineState(JSON.parse(event.data));
+  });
+
+  events.addEventListener("error", () => {
+    online.connected = false;
+    online.error = "连接断开，正在自动重连。";
+    updateUi();
+  });
+}
+
+function closeOnline() {
+  if (online.eventSource) {
+    online.eventSource.close();
+  }
+  online.eventSource = null;
+}
+
+function applyOnlineState(state) {
+  board = state.board;
+  current = state.current;
+  moves = state.moves;
+  winner = state.winner;
+  online.players = state.players || {};
+  online.color = state.colorByClient?.[clientId] || online.color;
+  startedAt = state.startedAt || Date.now();
+  if (winner) {
+    clearInterval(timerId);
+  } else {
+    restartTimer();
+  }
+  render();
+  updateUi();
+}
+
+async function sendOnlineAction(action, payload = {}) {
+  try {
+    const response = await fetch(`/api/rooms/${encodeURIComponent(online.room)}/${action}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId, ...payload }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "操作失败");
+    }
+    online.error = "";
+  } catch (error) {
+    online.error = error.message;
+    playSound("error");
+    updateUi();
+  }
+}
+
+function makeRoomCode() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+function roomUrl(room, keepSearchOnly = false) {
+  const url = new URL(location.href);
+  url.searchParams.set("room", room);
+  return keepSearchOnly ? `${url.pathname}${url.search}${url.hash}` : url.toString();
+}
+
+async function copyShareLink() {
+  if (!shareLinkInput.value) {
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(shareLinkInput.value);
+    copyLinkButton.textContent = "已复制";
+    window.setTimeout(() => {
+      copyLinkButton.textContent = "复制";
+    }, 1200);
+  } catch {
+    shareLinkInput.select();
+  }
 }
 
 function getAudioContext() {
@@ -506,13 +741,16 @@ function playSound(type) {
   oscillator.stop(now + duration + 0.02);
 }
 
-newGameButton.addEventListener("click", () => {
-  playSound("switch");
-  resetGame();
-});
-
+newGameButton.addEventListener("click", newGame);
 undoButton.addEventListener("click", undoMove);
 pvpModeButton.addEventListener("click", () => setMode("pvp"));
 aiModeButton.addEventListener("click", () => setMode("ai"));
+onlineModeButton.addEventListener("click", () => setMode("online"));
+copyLinkButton.addEventListener("click", copyShareLink);
 
-resetGame();
+if (new URLSearchParams(location.search).has("room")) {
+  gameMode = "online";
+  startOnline();
+} else {
+  resetGame();
+}

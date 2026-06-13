@@ -110,6 +110,53 @@ button {
   padding: 16px;
 }
 
+.online-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(86, 64, 35, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 12px 36px rgba(54, 42, 25, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.online-card[hidden] {
+  display: none;
+}
+
+.online-card strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+.connection-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.share-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 82px;
+  gap: 8px;
+}
+
+.share-row input {
+  min-width: 0;
+  height: 40px;
+  border: 1px solid rgba(86, 64, 35, 0.2);
+  border-radius: 8px;
+  padding: 0 10px;
+  color: var(--ink);
+  background: rgba(245, 238, 224, 0.82);
+  font: inherit;
+  font-size: 13px;
+}
+
 .turn-row {
   display: flex;
   gap: 14px;
@@ -162,7 +209,8 @@ button {
 }
 
 .controls button,
-.segmented button {
+.segmented button,
+.share-row button {
   min-height: 46px;
   border: 0;
   border-radius: 8px;
@@ -197,7 +245,7 @@ button {
 
 .segmented {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   padding: 5px;
   border-radius: 8px;
@@ -215,6 +263,10 @@ button {
   color: var(--white);
   background: var(--green);
   box-shadow: 0 8px 18px rgba(49, 111, 93, 0.22);
+}
+
+.share-row button {
+  min-height: 40px;
 }
 
 .sound-toggle {
