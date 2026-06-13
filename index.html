@@ -1,67 +1,84 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>世界国旗大挑战</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
-      body {
-        font-family: 'Noto Sans SC', sans-serif;
-      }
-      .fade-in {
-        animation: fadeIn 0.5s ease-in-out;
-      }
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      .slide-in-right {
-        animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      @keyframes slideInRight {
-        from { opacity: 0; transform: translateX(20px); }
-        to { opacity: 1; transform: translateX(0); }
-      }
-      .slide-in-left {
-        animation: slideInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      @keyframes slideInLeft {
-        from { opacity: 0; transform: translateX(-20px); }
-        to { opacity: 1; transform: translateX(0); }
-      }
-      .shake {
-        animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-      }
-      @keyframes shake {
-        10%, 90% { transform: translate3d(-1px, 0, 0); }
-        20%, 80% { transform: translate3d(2px, 0, 0); }
-        30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-        40%, 60% { transform: translate3d(4px, 0, 0); }
-      }
-      .scale-up {
-        animation: scaleUp 0.3s ease-out;
-      }
-      @keyframes scaleUp {
-        from { transform: scale(0.95); opacity: 0; }
-        to { transform: scale(1); opacity: 1; }
-      }
-    </style>
+    <title>五子棋</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="board-area" aria-label="五子棋棋盘">
+        <canvas id="board" width="780" height="780"></canvas>
+      </section>
 
-<link rel="stylesheet" href="/index.css">
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
-  }
-}
-</script>
-  <script type="module" crossorigin src="/assets/index-9vyKWLtR.js"></script>
-</head>
-  <body class="bg-slate-100 text-slate-800 antialiased overflow-x-hidden">
-    <div id="root"></div>
-</body>
+      <aside class="panel" aria-label="游戏信息">
+        <div class="brand">
+          <p>Gomoku</p>
+          <h1>五子棋</h1>
+        </div>
+
+        <div class="status-card">
+          <div class="turn-row">
+            <span id="turnStone" class="stone black" aria-hidden="true"></span>
+            <div>
+              <p class="label">当前回合</p>
+              <strong id="statusText">黑棋先手</strong>
+            </div>
+          </div>
+          <div class="meta-grid">
+            <div>
+              <p class="label">步数</p>
+              <strong id="moveCount">0</strong>
+            </div>
+            <div>
+              <p class="label">用时</p>
+              <strong id="timer">00:00</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="mode-card" aria-label="模式设置">
+          <p class="label">对战模式</p>
+          <div class="segmented" role="group" aria-label="选择对战模式">
+            <button id="pvpMode" class="active" type="button" aria-pressed="true">双人</button>
+            <button id="aiMode" type="button" aria-pressed="false">AI</button>
+            <button id="onlineMode" type="button" aria-pressed="false">联机</button>
+          </div>
+          <label class="sound-toggle">
+            <input id="soundToggle" type="checkbox" checked />
+            <span>音效</span>
+          </label>
+        </div>
+
+        <div id="onlineCard" class="online-card" hidden>
+          <div>
+            <p class="label">房间</p>
+            <strong id="roomCode">未连接</strong>
+          </div>
+          <div>
+            <p class="label">你的身份</p>
+            <strong id="playerRole">连接中</strong>
+          </div>
+          <p id="connectionText" class="connection-text">正在连接房间...</p>
+          <div class="share-row">
+            <input id="shareLink" type="text" readonly aria-label="邀请链接" />
+            <button id="copyLink" type="button">复制</button>
+          </div>
+        </div>
+
+        <div class="controls" aria-label="游戏操作">
+          <button id="newGame" type="button">新局</button>
+          <button id="undo" type="button">悔棋</button>
+        </div>
+
+        <div class="rules">
+          <h2>对局记录</h2>
+          <ol id="history" aria-label="落子记录"></ol>
+        </div>
+      </aside>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
 </html>

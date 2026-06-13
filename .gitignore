@@ -1,0 +1,7 @@
+*.log
+*.out.txt
+*.err.txt
+cloudflared.exe
+node_modules/
+.env
+.deploy-path.txt

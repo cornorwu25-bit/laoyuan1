@@ -1,0 +1,13 @@
+{
+  "name": "gomoku-online",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A browser-playable Gomoku game with local, AI, and online room modes.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
