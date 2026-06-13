@@ -24,6 +24,7 @@ const margin = cell;
 const winLength = 5;
 const humanPlayer = 1;
 const aiPlayer = 2;
+const onlineModeAvailable = !location.hostname.endsWith("github.io") && location.protocol !== "file:";
 const playerLabels = {
   1: "黑棋",
   2: "白棋",
@@ -430,6 +431,7 @@ function updateUi() {
   pvpModeButton.classList.toggle("active", gameMode === "pvp");
   aiModeButton.classList.toggle("active", gameMode === "ai");
   onlineModeButton.classList.toggle("active", gameMode === "online");
+  onlineModeButton.hidden = !onlineModeAvailable;
   pvpModeButton.setAttribute("aria-pressed", String(gameMode === "pvp"));
   aiModeButton.setAttribute("aria-pressed", String(gameMode === "ai"));
   onlineModeButton.setAttribute("aria-pressed", String(gameMode === "online"));
@@ -505,6 +507,10 @@ function updateTimer() {
 }
 
 function setMode(mode) {
+  if (mode === "online" && !onlineModeAvailable) {
+    return;
+  }
+
   if (gameMode === mode) {
     return;
   }
@@ -748,7 +754,7 @@ aiModeButton.addEventListener("click", () => setMode("ai"));
 onlineModeButton.addEventListener("click", () => setMode("online"));
 copyLinkButton.addEventListener("click", copyShareLink);
 
-if (new URLSearchParams(location.search).has("room")) {
+if (onlineModeAvailable && new URLSearchParams(location.search).has("room")) {
   gameMode = "online";
   startOnline();
 } else {
